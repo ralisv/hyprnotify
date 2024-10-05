@@ -212,32 +212,40 @@ func parse_hints(nf *Notification, hints map[string]dbus.Variant) {
 }
 
 func InitDBus(enable_sound bool) {
-	sound = enable_sound
+    sound = enable_sound
 
-	var err error
-	conn, err = dbus.ConnectSessionBus()
-	if err != nil {
-		panic(err)
-	}
-	defer conn.Close()
+    var err error
+    conn, err = dbus.ConnectSessionBus()
+    if err != nil {
+        panic(err)
+    }
+    defer conn.Close()
 
-	GetHyprSocket(&hyprsock)
-	if sound {
-		InitSpeaker()
-	}
+    GetHyprSocket(&hyprsock)
+    if sound {
+        InitSpeaker()
+    }
 
-	n := DBusNotify(PACKAGE)
-	conn.Export(n, FDN_PATH, FDN_IFAC)
-	conn.Export(introspect.Introspectable(DBUS_XML), FDN_PATH, INTROSPECTABLE_IFAC)
+    n := DBusNotify(PACKAGE)
+    conn.Export(n, FDN_PATH, FDN_IFAC)
+    conn.Export(introspect.Introspectable(DBUS_XML), FDN_PATH, INTROSPECTABLE_IFAC)
 
-	reply, err := conn.RequestName(FDN_NAME, dbus.NameFlagDoNotQueue)
-	if err != nil {
-		panic(err)
-	}
+    reply, err := conn.RequestName(FDN_NAME, dbus.NameFlagDoNotQueue)
+    if err != nil {
+        panic(err)
+    }
 
-	if reply != dbus.RequestNameReplyPrimaryOwner {
-		fmt.Fprintln(os.Stderr, "name already taken")
-		os.Exit(1)
-	}
-	select {}
-}
+    if reply != dbus.RequestNameReplyPrimaryOwner {
+        fmt.Fprintln(os.Stderr, "name already taken")
+        os.Exit(1)
+    }
+
+    // Create a channel to receive signals
+    signalChan := make(chan *dbus.Signal, 10)
+    conn.Signal(signalChan)
+
+    // Wait for signals
+    for signal := range signalChan {
+        // Handle the signal
+        fmt.Println("Received signal:", signal)
+    }
